@@ -1,11 +1,11 @@
 ---
 name: mem-recall
-description: Search and recall past AI conversations across Claude Code, Codex, and Pi (OpenCode reader temporarily unavailable on 0.6.0-beta.4) via the `trellis mem` CLI. Use whenever the user asks to remember, find, or look up anything discussed in previous AI sessions — across platforms, projects, or time. Triggers on phrases like "我之前跟 Claude/Codex 讨论过 X", "上次怎么处理 Y", "翻一下历史对话", "我们当时怎么决定 X 的", "为什么我们选了 X 而不是 Y", "find what I said about Z", "what did I discuss last week", "the rationale for choosing X", "find the brainstorm where we picked Z over alternatives". Use even when the user doesn't say "history" or "recall" — any reference to past AI-conversation content should trigger this skill. The tool reads sessions directly from each platform's local storage; nothing is uploaded.
+description: Search and recall past AI conversations across Claude Code, Codex, Grok, Pi and ZCode (OpenCode reader temporarily unavailable) via the `trellis mem` CLI. Use whenever the user asks to remember, find, or look up anything discussed in previous AI sessions — across platforms, projects, or time. Triggers on phrases like "我之前跟 Claude/Codex 讨论过 X", "上次怎么处理 Y", "翻一下历史对话", "我们当时怎么决定 X 的", "为什么我们选了 X 而不是 Y", "find what I said about Z", "what did I discuss last week", "the rationale for choosing X", "find the brainstorm where we picked Z over alternatives". Use even when the user doesn't say "history" or "recall" — any reference to past AI-conversation content should trigger this skill. The tool reads sessions directly from each platform's local storage; nothing is uploaded.
 ---
 
 # Mem Recall
 
-Cross-platform conversation memory for Claude Code, Codex CLI, and Pi. The `trellis mem` command reads each platform's local session storage, cleans the dialogue (strips system prompts, tool noise, hook injections, compact summaries handled correctly), and exposes a focused 5-command CLI for recall workflows. **OpenCode reader is temporarily unavailable on 0.6.0-beta.4** — `--platform opencode` returns empty results and prints a one-shot stderr warning; will return in a future release with an install-resilient backend.
+Cross-platform conversation memory for Claude Code, Codex CLI, Grok, Pi and ZCode. The `trellis mem` command reads each platform's local session storage, cleans the dialogue (strips system prompts, tool noise, hook injections, compact summaries handled correctly), and exposes a focused 5-command CLI for recall workflows. **OpenCode reader is temporarily unavailable on 0.6.0-beta.4** — `--platform opencode` returns empty results and prints a one-shot stderr warning; will return in a future release with an install-resilient backend.
 
 ## Prerequisite
 
@@ -194,7 +194,7 @@ OpenCode child sessions show `↳ child of <parent-id>` annotation (currently no
 ## Flags reference
 
 ```
---platform claude|codex|pi|opencode|all   default all
+--platform claude|codex|grok|pi|zcode|opencode|all   default all
 --since YYYY-MM-DD                     inclusive lower bound
 --until YYYY-MM-DD                     inclusive upper bound
 --global                               include all projects (default: cwd-scoped)
@@ -220,6 +220,7 @@ The tool reads these locations directly. No daemon, no index, no upload.
 |---|---|---|
 | **Claude Code** | `~/.claude/projects/<sanitized-cwd>/*.jsonl` | One JSONL per session; cwd path encoded in dirname (`/` and `_` → `-`) |
 | **Codex** | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` | One JSONL per session; cwd in `session_meta` payload of first event |
+| **Grok** | `~/.grok/sessions/<url-encoded-cwd>/<session-id>/chat_history.jsonl` | cwd is URL-encoded in the directory name; `session_search.sqlite` is only an index and is not read |
 | **Pi** | Default `~/.pi/agent/sessions/`; env overrides; global `~/.pi/agent/settings.json`; scoped project `.pi/settings.json` | One JSONL per session; relative `sessionDir` values resolve from the settings file directory. Project-local settings are discovered for the current cwd or `--cwd`, not by an unrestricted `--global` scan. Only the active `id`/`parentId` branch is extracted. |
 | **OpenCode** | Reader temporarily unavailable in 0.6.0-beta.4 | Returns empty + one-shot stderr warning |
 
@@ -230,7 +231,7 @@ The tool extracts only real human-AI dialogue and strips:
 - **System / prompt injections**: `<system-reminder>`, `<workflow-state>`, `<INSTRUCTIONS>`, `<environment_context>`, `<permissions instructions>`, `<collaboration_mode>`, etc. (case-insensitive)
 - **Bootstrap turns**: Codex injects AGENTS.md preamble as the first user message — entire turn is dropped, not just the tags
 - **Tool calls and their results**: only `text` blocks are kept
-- **Compact summaries**: when a session is compacted (Claude `isCompactSummary` / Codex `compacted` event), pre-compact turns are dropped and replaced by the summary, so old content isn't double-counted
+Turns from before a compaction are **kept**, with a marker showing where the compaction happened (0.6.14 and later; earlier versions dropped them). Content a platform does not store readably is reported rather than silently omitted — Codex encrypts messages between agents, and Grok keeps pre-compaction turns as rendered markdown under `<session>/compaction/`.
 
 This means search hits are reliable signals of "the actual conversation discussed this", not "the keyword appeared in some hook injection".
 
