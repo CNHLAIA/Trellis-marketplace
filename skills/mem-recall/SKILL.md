@@ -5,24 +5,24 @@ description: Search and recall past AI conversations across Claude Code, Codex, 
 
 # Mem Recall
 
-Cross-platform conversation memory for Claude Code, Codex CLI, Grok, Pi and ZCode. The `trellis mem` command reads each platform's local session storage, cleans the dialogue (strips system prompts, tool noise, hook injections, compact summaries handled correctly), and exposes a focused 5-command CLI for recall workflows. **OpenCode reader is temporarily unavailable on 0.6.0-beta.4** — `--platform opencode` returns empty results and prints a one-shot stderr warning; will return in a future release with an install-resilient backend.
+Cross-platform conversation memory for Claude Code, Codex CLI, Grok, Pi and ZCode. The `trellis mem` command reads each platform's local session storage, cleans the dialogue (strips system prompts, tool noise, hook injections, compact summaries handled correctly), and exposes a focused 5-command CLI for recall workflows. **The OpenCode reader is unavailable** — `--platform opencode` returns empty results and prints a one-shot stderr warning.
 
 ## Prerequisite
 
-Trellis CLI **0.6.7 or later** installed globally:
+Trellis CLI **0.6.14 or later** installed globally:
 
 ```bash
 npm install -g @mindfoldhq/trellis@latest
-trellis --version   # must be 0.6.7 or later
+trellis --version
 ```
 
-`trellis mem` ships bundled with the CLI; no extra setup. Version 0.6.7 adds
-project-local Pi `sessionDir` discovery (see the storage table below).
+`trellis mem` ships bundled with the CLI; no extra setup. 0.6.14 adds Grok
+support and returns turns from before a compaction; earlier versions dropped
+them.
 
-The OpenCode reader is **temporarily unavailable in 0.6.0-beta.4** (returns
-empty + a one-shot stderr warning). Reverted from 0.6.0-beta.3 due to
-native-dependency install failures on Windows. Will return in a future
-release with an install-resilient backend.
+The OpenCode reader is unavailable: it needed a native SQLite dependency that
+failed to install on Windows, and was reverted. `--platform opencode` returns
+empty results and a one-shot stderr warning.
 
 ## When to use this skill
 
@@ -173,7 +173,7 @@ trellis mem extract 4cda3c7f --phase implement
 | Claude | Native — boundary detection on raw JSONL `tool_use` Bash blocks |
 | Codex | Native — boundary detection on `function_call` (`exec_command`) events |
 | Pi | Native — boundary detection on active-branch session entries |
-| OpenCode | Unavailable in 0.6.0-beta.4 — returns empty + warning |
+| OpenCode | Unavailable — returns empty + warning |
 
 **Edge cases handled gracefully**:
 
@@ -222,7 +222,7 @@ The tool reads these locations directly. No daemon, no index, no upload.
 | **Codex** | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` | One JSONL per session; cwd in `session_meta` payload of first event |
 | **Grok** | `~/.grok/sessions/<url-encoded-cwd>/<session-id>/chat_history.jsonl` | cwd is URL-encoded in the directory name; `session_search.sqlite` is only an index and is not read |
 | **Pi** | Default `~/.pi/agent/sessions/`; env overrides; global `~/.pi/agent/settings.json`; scoped project `.pi/settings.json` | One JSONL per session; relative `sessionDir` values resolve from the settings file directory. Project-local settings are discovered for the current cwd or `--cwd`, not by an unrestricted `--global` scan. Only the active `id`/`parentId` branch is extracted. |
-| **OpenCode** | Reader temporarily unavailable in 0.6.0-beta.4 | Returns empty + one-shot stderr warning |
+| **OpenCode** | Reader unavailable | Returns empty + one-shot stderr warning |
 
 ## Cleaning rules (what's stripped from raw data)
 
@@ -242,9 +242,9 @@ This means search hits are reliable signals of "the actual conversation discusse
 | Claude | Same JSONL — main agent's `Agent`/`Task` tool_use logs the prompt; tool_result has the final output. **Sub-agent's internal turns are NOT recorded** | Only prompt + final result |
 | Codex | **New rollout JSONL per `codex exec` spawn**, no `parent_id` field | Treated as independent session |
 | Pi | Single JSONL per session; abandoned branches dropped from the active branch, but each abandoned branch's `branch_summary` entry is kept as one summary turn | Active branch + abandoned-branch summaries |
-| OpenCode | Reader temporarily unavailable in 0.6.0-beta.4 | n/a until reader returns |
+| OpenCode | Reader unavailable | n/a until reader returns |
 
-`--include-children` only meaningfully changes behavior for OpenCode searches (no-op in 0.6.0-beta.4 while OpenCode reader is unavailable).
+`--include-children` only meaningfully changes behavior for OpenCode searches, so it is a no-op while that reader is unavailable.
 
 ## Worked example: "what did I discuss about memory in Trellis last week?"
 
